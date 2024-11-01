@@ -4,12 +4,12 @@
 \name{ecofun-package}
 \alias{ecofun}
 \alias{ecofun-package}
-\title{ecofun: What the Package Does (One Line, Title Case)}
+\title{ecofun: A Collection Of Useful Functions For Ecological Analysis}
 \description{
-What the package does (one paragraph).
+A collection of useful functions for ecological analysis
 }
 \author{
-\strong{Maintainer}: First Last \email{first.last@example.com} (\href{https://orcid.org/YOUR-ORCID-ID}{ORCID})
+\strong{Maintainer}: George Roff \email{george.roff@csiro.au} (\href{https://orcid.org/YOUR-ORCID-ID}{ORCID})
 
 }
 \keyword{internal}

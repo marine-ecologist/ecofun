@@ -3,3 +3,5 @@
 export(inla2)
 export(predict)
 importFrom(INLA,inla.stack.index)
+importFrom(tictoc,tic)
+importFrom(tictoc,toc)

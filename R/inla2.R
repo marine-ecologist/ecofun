@@ -16,17 +16,38 @@
 #' @param verbose silence inla
 #' @param ... passes functions
 #' @export
+#' @examples
 
+# # Set seed for reproducibility
+# set.seed(123)
+#
+# # Generate fake data
+# n <- 100
+# y <- runif(n, 1, 10)  # Predictor variable y, uniform distribution between 1 and 10
+# z <- factor(sample(c("A", "B", "C"), n, replace = TRUE))  # Categorical predictor z with 3 levels
+# x <- 3 + 0.5 * y + as.numeric(z) * 1.5 + rnorm(n, sd = 0.5)  # Response variable x with interaction effects
+#
+# # Combine into a data frame
+# fake_data <- data.frame(x = x, y = y, z = z)
+#
+# # Create a new data frame for predictions
+# newdat <- expand.grid(y = seq(1, 10, length.out = 20), z = levels(z))
+#
+# # Specify the formula
+# formula <- x ~ y * z
+#
+# m1 <- inla2(formula, data=fake_data, newdat)
 
 
 inla2 <- function(data, formula, newdat, family = "gaussian", compute_dic = TRUE, compute_waic = TRUE, compute_marginals=TRUE, verbose = TRUE, ...) {
 
+  tictoc::tic()
 
   # Extract response and predictor variables from the formula
-  response <- all.vars(formula)[1]  # The response variable is the first element
-  predictors <- all.vars(formula)[-1]  # Exclude the response variable to get predictors
+  response <- all.vars(formula)[1]  # Extract response variable
+  predictors <- all.vars(formula)[-1]  # Extract predictors
 
-  # Construct new data for predictions
+  # Construct new data for predictions based on predictors
   newdat_inla <- base::expand.grid(newdat[predictors]) |> base::as.data.frame()
 
   # Prepare the effects list dynamically based on predictors
@@ -38,9 +59,9 @@ inla2 <- function(data, formula, newdat, family = "gaussian", compute_dic = TRUE
     effects_pred[[pred]] <- newdat_inla[[pred]]
   }
 
-  # Define the stack for fitting data using the response variable
+  # Define the stack for fitting data using the response variable without transformations
   stack_fit <- INLA::inla.stack(
-    data = list(response = base::log(data[[response]])),  # Log-transform the response
+    data = list(x = data[[response]]),  # Use the response variable directly
     A = list(1),
     effects = list(effects_fit),
     tag = "obs"
@@ -48,7 +69,7 @@ inla2 <- function(data, formula, newdat, family = "gaussian", compute_dic = TRUE
 
   # Define the stack for predictions
   stack_pred <- INLA::inla.stack(
-    data = list(response = NA),
+    data = list(x = NA),
     A = list(1),
     effects = list(effects_pred),
     tag = "pred"
@@ -61,19 +82,34 @@ inla2 <- function(data, formula, newdat, family = "gaussian", compute_dic = TRUE
   model <- INLA::inla(
     formula,
     data = INLA::inla.stack.data(stack),
-    family = family,
+    family = "gaussian",  # Default family
     control.predictor = list(A = INLA::inla.stack.A(stack), compute = TRUE),
+
+    # Configure control.inla with the appropriate silent level based on verbose
+    control_inla <- if (isTRUE(verbose)) {
+      list(strategy = "gaussian", silent = 0L)  # Verbose mode with standard output
+    } else {
+      list(strategy = "gaussian", silent = 2L)  # Fully silent mode
+    }
+    ,
     control.compute = list(
-      dic = compute_dic,
-      waic = compute_waic,
+      dic = TRUE,
+      waic = TRUE,
       cpo = TRUE,
-      return.marginals.predictor = compute_marginals
+      return.marginals.predictor = TRUE
     ),
-    verbose = verbose
+
   )
+
+  # Inspect model output
+  summary(model)
 
   output <- list(stack = stack, newdat=newdat, model = model)
   names(output) <- c("stack", "newdat", "model")
   return(output)
 
+  print(tictoc::toc())
 }
+
+
+
