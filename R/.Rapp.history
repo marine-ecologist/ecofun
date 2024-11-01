@@ -1,0 +1,1 @@
+devtools::install_github("https://github.com/marine-ecologist/ecofun/", force=TRUE)

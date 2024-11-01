@@ -18,7 +18,7 @@
 #' @export
 
 
-# Wrapper function for INLA model
+
 inla2 <- function(data, formula, newdat, family = "gaussian", compute_dic = TRUE, compute_waic = TRUE, compute_marginals=TRUE, verbose = TRUE, ...) {
 
 
@@ -75,5 +75,5 @@ inla2 <- function(data, formula, newdat, family = "gaussian", compute_dic = TRUE
   output <- list(stack = stack, newdat=newdat, model = model)
   names(output) <- c("stack", "newdat", "model")
   return(output)
-}
 
+}
