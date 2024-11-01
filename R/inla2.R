@@ -8,23 +8,19 @@
 #'
 #' @param data df for inla model
 #' @param formula specified formula (no ranef yet)
-#' @param newdata for predictors as list
+#' @param newdat newdata for predictors as list
 #' @param family default gaussian
 #' @param compute_dic compute dic, logical
 #' @param compute_waic compute waic, logical
+#' @param compute_marginals compute waic, logical
 #' @param verbose silence inla
 #' @param ... passes functions
 #' @export
-#' # example code
-# # Example usage:
-# # Define predictors and formula
-# newdat <- data.frame(age = seq(1, 200, by = 1), species = unique(mean_chrono_standardised$species))
-# formula <- log(pred_cum_radius) ~ log(age) * species
-# fm1_inla_pred <- run_inla_model(data = mean_chrono_standardised, formula = formula, newdat = newdat)
 
 
 # Wrapper function for INLA model
-inla <- function(data, formula, newdat, family = "gaussian", compute_dic = TRUE, compute_waic = TRUE, marginals=TRUE, verbose = TRUE) {
+inla2 <- function(data, formula, newdat, family = "gaussian", compute_dic = TRUE, compute_waic = TRUE, compute_marginals=TRUE, verbose = TRUE, ...) {
+
 
   # Extract response and predictor variables from the formula
   response <- all.vars(formula)[1]  # The response variable is the first element
@@ -71,13 +67,13 @@ inla <- function(data, formula, newdat, family = "gaussian", compute_dic = TRUE,
       dic = compute_dic,
       waic = compute_waic,
       cpo = TRUE,
-      return.marginals.predictor = marginals
+      return.marginals.predictor = compute_marginals
     ),
     verbose = verbose
   )
 
-  output <- list(stack = stack, model = model)
-  names(output) <- c("stack", "model")
+  output <- list(stack = stack, newdat=newdat, model = model)
+  names(output) <- c("stack", "newdat", "model")
   return(output)
 }
 
