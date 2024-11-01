@@ -39,7 +39,7 @@
 # m1 <- inla2(formula, data=fake_data, newdat)
 
 
-inla2 <- function(data, formula, newdat, family = "gaussian", compute_dic = TRUE, compute_waic = TRUE, compute_marginals=TRUE, verbose = TRUE, ...) {
+inla2 <- function(data, formula, newdat, family = "gaussian", compute_dic = TRUE, compute_waic = TRUE, compute_marginals = TRUE, verbose = TRUE, ...) {
 
   tictoc::tic()
 
@@ -78,38 +78,31 @@ inla2 <- function(data, formula, newdat, family = "gaussian", compute_dic = TRUE
   # Combine fit and prediction stacks
   stack <- INLA::inla.stack(stack_fit, stack_pred)
 
+
+
   # Run the INLA model
   model <- INLA::inla(
     formula,
     data = INLA::inla.stack.data(stack),
-    family = "gaussian",  # Default family
+    family = family,
     control.predictor = list(A = INLA::inla.stack.A(stack), compute = TRUE),
-
-    # Configure control.inla with the appropriate silent level based on verbose
-    control_inla <- if (isTRUE(verbose)) {
-      list(strategy = "gaussian", silent = 0L)  # Verbose mode with standard output
-    } else {
-      list(strategy = "gaussian", silent = 2L)  # Fully silent mode
-    }
-    ,
+    #control.inla = control_inla,
     control.compute = list(
-      dic = TRUE,
-      waic = TRUE,
+      dic = compute_dic,
+      waic = compute_waic,
       cpo = TRUE,
-      return.marginals.predictor = TRUE
-    ),
-
+      return.marginals.predictor = compute_marginals
+    )
   )
 
   # Inspect model output
   summary(model)
 
-  output <- list(stack = stack, newdat=newdat, model = model)
-  names(output) <- c("stack", "newdat", "model")
+  # Prepare output
+  output <- list(stack = stack, newdat = newdat_inla, model = model)
+
+  # Print timing information
+  (tictoc::toc())
+
   return(output)
-
-  print(tictoc::toc())
 }
-
-
-
