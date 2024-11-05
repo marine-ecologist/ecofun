@@ -10,7 +10,6 @@
 #' @param compute_waic Compute WAIC, logical
 #' @param compute_cpo Compute CPO, logical
 #' @param compute_marginals Compute marginals, logical
-#' @param verbose Set INLA output verbosity, logical
 #' @param ... Additional parameters passed to INLA
 #' @export
 #' @examples
@@ -34,10 +33,17 @@
 # head(result$inla_predictions)
 #
 
-# Generic function to fit an INLA model and make predictions on new data
-inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = NULL, seed = NULL) {
 
-  # Set the seed for reproducibility, if provided
+inla2 <- function(formula, data, newdat,
+                  response_log = FALSE,
+                  seed = NULL,
+                  family = "gaussian",
+                  compute_dic = FALSE,
+                  compute_waic = FALSE,
+                  compute_cpo = FALSE,
+                  compute_marginals = FALSE) {
+
+  # Set the seed for reproducibility of the R environment if provided
   if (!is.null(seed)) {
     set.seed(seed)
   }
@@ -47,7 +53,7 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
   response_var <- all.vars(formula)[1]
   response_log <- grepl("log\\(", deparse(terms_info[[2]]))  # Check if log() is used on the response
 
-  # Identify log-transformed predictors
+  # Identify log-transformed predictors and handle factor variables
   predictor_log <- sapply(attr(terms_info, "variables")[-1], function(term) {
     deparse(term) %in% grep("log\\(", deparse(term), value = TRUE)
   })
@@ -61,10 +67,21 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
     newdat[[response_var]] <- NA
   }
 
-  # Transform log-transformed predictors in both data and newdat
+  # Transform log-transformed numeric predictors in both data and newdat
   for (pred in predictor_log) {
-    data[[pred]] <- log(data[[pred]])
-    newdat[[pred]] <- log(newdat[[pred]])
+    if (is.numeric(data[[pred]])) {  # Ensure that only numeric variables are transformed
+      data[[pred]] <- log(data[[pred]])
+      newdat[[pred]] <- log(newdat[[pred]])
+    } else {
+      stop(paste("Error: Predictor", pred, "is a factor and cannot be log-transformed."))
+    }
+  }
+
+  # Ensure factor levels in newdat match those in data for factor predictors
+  factor_vars <- names(Filter(is.factor, data))
+  for (factor_var in factor_vars) {
+    # Align levels in newdat to match those in data
+    newdat[[factor_var]] <- factor(newdat[[factor_var]], levels = levels(data[[factor_var]]))
   }
 
   # Remove response variable from data and newdat for the effects in the stack
@@ -97,8 +114,10 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
   # Fit the INLA model using the combined stack
   model <- INLA::inla(
     formula = stats::update(formula, . ~ . + intercept - 1),  # Explicit intercept, remove implicit intercept
+    family = family,
     data = INLA::inla.stack.data(stack),
-    control.predictor = list(A = INLA::inla.stack.A(stack), compute = TRUE)
+    control.predictor = list(A = INLA::inla.stack.A(stack), compute = TRUE, num.threads = 1),  # Single-threaded
+    control.compute = list(dic = compute_dic, waic = compute_waic, cpo = compute_cpo, config = compute_marginals)
   )
 
   # Extract the index of predictions in the stack
