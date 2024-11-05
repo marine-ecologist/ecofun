@@ -1,0 +1,233 @@
+---
+title: "Recreating the abrupt conclusion of the late Miocene-early Pliocene biogenic bloom at 4.6-4.4 Ma"
+author: "George Roff"
+date: "2024-11-02"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning = FALSE)
+```
+
+Download the source data from "Reduced continental weathering and marine calcification linked to late Neogene decline in atmospheric CO2" ([Nature Geoscience](https://www.nature.com/articles/s41561-019-0450-3))
+Extract the raw data, reformat into workable dataframe:
+
+
+### surface MARc
+```{r, fig.width=8, fig.height=12}
+
+library(sf)
+library(tidyverse)
+library(ggplot2)
+
+# Data for MARc values
+marc_data <- data.frame(
+  Site = c("1208", "588", "590", "593", "1171", "806", "807", "803", "804", "U1337", 
+           "U1338", "1237", "846", "982", "608", "607", "558", "999", "667", "925", 
+           "928", "1264", "1266", "1088", "758", "754"),
+  MARc_0_2_5_Ma = c(1.54, 1.13, 1.52, 1.59, 1.12, 1.71, 1.27, 0.85, 0.64, 0.19, 
+                    0.49, 0.23, 1.01, 1.45, 1.31, 2.57, 1.41, 1.45, 0.71, 1.3, 
+                    0.92, 0.84, 1.19, 0.88, 0.67, 0.32),
+  SD_0_2_5_Ma = c(0.54, 0.32, 0.39, 0.28, 0.31, 0.15, 0.18, 0.2, 0.09, 0.18, 
+                  0.12, 0.2, 0.38, 0.54, 0.44, 0.63, 0.26, 0.27, 0.18, 0.48, 
+                  0.41, 0.13, 0.18, 0.09, 0.07, 0.07),
+  MARc_5_3_7_Ma = c(0.81, 3.3, 5.69, 3.78, 0.64, 4.35, 3.19, 2.23, 0.8, 0.47, 
+                    1.4, 2.17, 1.64, 5, 1.69, 5.31, 2.71, 1.24, 1.31, 1.97, 
+                    0.88, 2.74, 0.54, 1.47, 0.96, 0.46),
+  SD_5_3_7_Ma = c(0.55, 0.51, 0.26, 1.41, 0.14, 0.41, 0.19, 0.43, 0.3, 0.31, 
+                  0.23, 0.15, 1.07, 0.22, 0.67, 0.16, 0.06, 0.31, 0.22, 0.39, 
+                  0.41, 1.23, 0.003, 0.32, 0.13, 0.04),
+  MARc_13_5_11_5_Ma = c(0.65, 1.79, 2.19, 3.63, 1.92, 4, 3.3, 1.65, 0.75, 2.46, 
+                        2.46, 1.1, 1.24, 5.32, 2.52, 3.034, 3.034, 0.94, 1.08, 1.32, 
+                        0.52, 1.08, 0.49, 3.14, 0.3, 0.79),
+  SD_13_5_11_5_Ma = c(0.21, 0.12, 0.18, 0.08, 0.18, 0.26, 0.26, 0.45, 0.03, 0.57, 
+                      0.31, 0.12, 0.16, 0.46, 0.06, 0.3, 0.3, 0.34, 0.53, 0.23, 
+                      0.22, 0.53, 0.17, 1.19, 0.03, 0.01)
+)
+
+
+# Data for latitude, longitude, and water depth
+location_data <- data.frame(
+  Site = c("806", "807", "803", "804", "1208", "588", "590", "593", "1171", 
+           "U1337", "U1338", "1237", "846", "982", "607", "608", "558", "999", 
+           "667", "925", "928", "1264", "1266", "1088", "758", "754"),
+  Latitude = c("0°19.11'N", "3°36.42'N", "2°25.98'N", "1°00.28'N", "36°7.6301'N", 
+               "26°06.7'S", "31°10.02'S", "40°30.47'S", "48°29.9960'S", 
+               "3°50.009'N", "2°30.469'N", "16°0.421'S", "3°5.70'S", 
+               "57°31.002'N", "41°00.068'N", "42°50.21'N", "37°46.2'N", 
+               "12°44.639'N", "4°34.15'N", "4°12.249'N", "5°27.320'N", 
+               "28°31.95'S", "28°32.55'S", "41°8.163'S", "5°23.049'N", 
+               "30°56.439'S"),
+  Longitude = c("159°21.68'E", "156°37.49'E", "160°32.40'E", "161°35.62'E", 
+                "158°12.0952'E", "161°13.6'E", "163°21.51'E", "167°40.47'E", 
+                "149°6.6901'E", "123°12.352'W", "117°58.178'W", "76°22.685'W", 
+                "90°49.08'W", "15°51.993'W", "32°57.438'W", "23°05.25'W", 
+                "37°20.61'W", "78°44.360'W", "21°54.68'W", "43°29.334'W", 
+                "43°44.884'W", "2°50.73'E", "2°20.61'E", "13°33.770'E", 
+                "90°21.673'E", "93°33.991'E"),
+  Water_depth_m = c(2521, 2804, 3410, 3862, 3346, 1533, 1299, 1068, 2150, 4463, 
+                    4200, 3212, 3296, 1134, 3426, 3526, 3754, 2838, 3539, 3053, 
+                    4022, 2507, 3798, 2250, 2923, 1074)
+)
+
+
+# Load required library
+library(sf)
+library(dplyr)
+
+# Convert coordinates from degrees/minutes to decimal
+convert_to_decimal <- function(coord) {
+  # Convert degrees/minutes/seconds to decimal degrees
+  coord <- gsub("[^0-9.EWNS]", " ", coord)  # Remove unwanted characters
+  parts <- strsplit(coord, " ")[[1]]
+  degree <- as.numeric(parts[1])
+  minute <- as.numeric(parts[2]) / 60
+  
+  decimal <- degree + minute
+  if (grepl("S|W", coord)) decimal <- -decimal
+  return(decimal)
+}
+
+# Apply the conversion function to latitude and longitude
+location_data <- location_data %>%
+  mutate(
+    Latitude = sapply(Latitude, convert_to_decimal),
+    Longitude = sapply(Longitude, convert_to_decimal)
+  )
+
+# View the result to confirm conversion
+head(location_data)
+
+# Join the two data frames by Site
+joined_data <- left_join(marc_data, location_data, by = "Site") |> 
+  select(-SD_0_2_5_Ma, -SD_5_3_7_Ma, -SD_13_5_11_5_Ma) |> 
+  pivot_longer(-c("Site", "Water_depth_m", "Longitude", "Latitude"), names_to="time", values_to="MARc") |> 
+  mutate(time = factor(time, levels=c("MARc_0_2_5_Ma", "MARc_5_3_7_Ma", "MARc_13_5_11_5_Ma"), ordered=TRUE)) |> 
+  filter(Latitude > -30 & Latitude < 30)
+
+# Convert the joined data to an sf object, using WGS84 (EPSG:4326)
+joined_sf <- st_as_sf(joined_data, coords = c("Longitude", "Latitude"), crs = 4326) 
+
+
+
+# get modern coastlines
+world <- rnaturalearth:: ne_countries(scale = "large", returnclass = "sf")
+world_map <- world %>%
+  dplyr::group_by(continent) %>%
+  dplyr::select(continent) %>%
+  # st_buffer(dist=.001) %>%
+  st_transform(4326)
+
+
+
+
+joined_sf |># filter(MARc < 3) |> 
+  ggplot() + theme_bw() + 
+  facet_wrap(~time, ncol=1) +
+    geom_sf(data=world_map, fill="#e0ffd1", linewidth = 0.05) +
+    geom_sf(aes(fill=(MARc)), shape=21, size=3) + 
+    scale_fill_distiller(palette="BrBG") +
+    theme(panel.background = element_rect(fill = '#c4ecf5'),
+          panel.grid.minor = element_line(linewidth = 0.05),
+          panel.grid.major = element_line(linewidth = 0.1))
+
+
+
+
+```
+
+### core data
+
+
+
+```{r, fig.width=10, fig.height=3.5}
+
+bulkMAR <- rbind(
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp1171-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=1171) |> mutate(region="pacific"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp1208-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=1208) |> mutate(region="pacific"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp1264-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=1264) |> mutate(region="atlantic"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp1266-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=1266) |> mutate(region="atlantic"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp1338-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=1338) |> mutate(region="pacific"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp590-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=590) |> mutate(region="pacific"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp608-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=608) |> mutate(region="atlantic"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp667-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=667) |> mutate(region="atlantic"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp754-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=754) |> mutate(region="indian"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp758-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=758) |> mutate(region="indian"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp803-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=803) |> mutate(region="pacific"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp804-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=804) |> mutate(region="pacific"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp806-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=806) |> mutate(region="pacific"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp807-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=807) |> mutate(region="pacific"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp846-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=846) |> mutate(region="pacific"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp925-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=925) |> mutate(region="atlantic"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp928-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=928) |> mutate(region="atlantic"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp982-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=982) |> mutate(region="atlantic"),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp999-bulk.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=999) |> mutate(region="atlantic")
+)
+
+
+
+ggplot() + theme_bw() + 
+  facet_wrap(~region) +
+  geom_line(data=bulkMAR, aes(age_Ma, Bulk_MAR, group=core)) +
+  geom_smooth(data=bulkMAR, aes(age_Ma, Bulk_MAR, group=region), method="gam")
+
+
+```
+
+
+```{r, fig.width=10, fig.height=3.5}
+
+foramMARc <- rbind(
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp1171-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=1171) |> mutate(region="pacific") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp1208-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=1208) |> mutate(region="pacific") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp1264-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=1264) |> mutate(region="atlantic") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp1266-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=1266) |> mutate(region="atlantic") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp1338-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=1338) |> mutate(region="pacific") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp590-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=590) |> mutate(region="pacific") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp608-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=608) |> mutate(region="atlantic") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp667-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=667) |> mutate(region="atlantic") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp754-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=754) |> mutate(region="indian") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp758-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=758) |> mutate(region="indian") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp803-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=803) |> mutate(region="pacific") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp804-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=804) |> mutate(region="pacific") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp806-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=806) |> mutate(region="pacific") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp807-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=807) |> mutate(region="pacific") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp846-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=846) |> mutate(region="pacific") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp925-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=925) |> mutate(region="atlantic") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp928-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=928) |> mutate(region="atlantic") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp982-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=982) |> mutate(region="atlantic") |> select(depth_m, age_Ma, MAR_foram, core, region),
+  read.table("https://www.ncei.noaa.gov/pub/data/paleo/contributions_by_author/si2019/si2019-odp999-foram.txt", header = TRUE, comment.char = "#", sep = "\t", stringsAsFactors = FALSE) |> mutate(core=999) |> mutate(region="atlantic") |> select(depth_m, age_Ma, MAR_foram, core, region)
+)
+
+foramMARc <- foramMARc |> filter(age_Ma < 15)
+
+tmp <- left_join(foramMARc |> mutate(core=as.character(core)), location_data |> rename(core=Site)) |> 
+  filter(Latitude >-30 | Latitude < 30)
+
+ggplot() + theme_bw() + 
+  facet_wrap(~region) +
+  geom_line(data=tmp, aes(age_Ma, MAR_foram, group=core)) +
+  geom_smooth(data=tmp, aes(age_Ma, MAR_foram, group=region), method="gam")
+
+
+```
+
+```{r, fig.width=10, fig.height=3.5}
+
+
+
+
+st_as_sf(tmp, coords = c("Longitude", "Latitude"), crs = 4326) |> mutate(core=factor(core)) |> 
+ggplot() + theme_bw() +
+   geom_sf(data=world_map, fill="#e0ffd1", linewidth = 0.05) +
+   geom_sf_text(aes(label = core), nudge_y = 0.5, nudge_x = 0.5, size=2) +
+   scale_fill_distiller(palette="RdBu") +
+   geom_hline(yintercept = 35) +
+   geom_hline(yintercept = -35) +
+   theme(panel.background = element_rect(fill = '#c4ecf5'),
+         panel.grid.minor = element_line(linewidth = 0.05),
+         panel.grid.major = element_line(linewidth = 0.1))
+
+```

@@ -1,0 +1,244 @@
+---
+title: "Recreating the abrupt conclusion of the late Miocene-early Pliocene biogenic bloom at 4.6-4.4 Ma"
+author: "George Roff"
+date: "2024-11-02"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning = FALSE)
+```
+
+Download the source data from "Abrupt conclusion of the late Miocene-early Pliocene biogenic bloom at 4.6-4.4 Ma" ([Nature Comms](https://pmc.ncbi.nlm.nih.gov/articles/PMC8764042/))
+Extract the raw data, reformat into workable dataframe:
+
+```{r}
+
+library(tidyverse)
+library(ggplot2)
+library(kableExtra)
+
+url <- "https://static-content.springer.com/esm/art%3A10.1038%2Fs41467-021-27784-6/MediaObjects/41467_2021_27784_MOESM2_ESM.xlsx"
+local_path <- tempfile(fileext = "41467_2021_27784_MOESM2_ESM.xlsx")  # Create a temporary file path
+download.file(url, destfile = local_path, mode = "wb")
+
+core_data <- readxl::read_xlsx(local_path, sheet="individual z-scored records") %>% select(where(~ !all(is.na(.))))
+
+
+cores <- rbind(
+  data.frame(core=names(core_data[,2]), age = core_data[,1], values = core_data[,2]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="pacific", type="BSMAR"),
+  data.frame(core=names(core_data[,4]), age = core_data[,3], values = core_data[,4]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="pacific", type="CMAR"),
+  data.frame(core=names(core_data[,6]), age = core_data[,5], values = core_data[,6]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="pacific", type="BSMAR"),
+  data.frame(core=names(core_data[,8]), age = core_data[,7], values = core_data[,8]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="pacific", type="CMAR"),
+  data.frame(core=names(core_data[,10]), age = core_data[,9], values = core_data[,10]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="pacific", type="BSMAR"),
+  data.frame(core=names(core_data[,12]), age = core_data[,11], values = core_data[,12]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="pacific", type="CMAR"),
+  data.frame(core=names(core_data[,14]), age = core_data[,13], values = core_data[,14]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="pacific", type="CMAR"),
+  data.frame(core=names(core_data[,16]), age = core_data[,15], values = core_data[,16]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="pacific", type="BSMAR"),
+  data.frame(core=names(core_data[,18]), age = core_data[,17], values = core_data[,18]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="pacific", type="CMAR"),
+  data.frame(core=names(core_data[,20]), age = core_data[,19], values = core_data[,20]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="pacific", type="CMAR"),
+  data.frame(core=names(core_data[,22]), age = core_data[,21], values = core_data[,22]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="pacific", type="CMAR"),
+  data.frame(core=names(core_data[,24]), age = core_data[,23], values = core_data[,24]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="atlantic", type="BFAR"),
+  data.frame(core=names(core_data[,26]), age = core_data[,25], values = core_data[,26]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="atlantic", type="CMAR"),
+  data.frame(core=names(core_data[,28]), age = core_data[,27], values = core_data[,28]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="atlantic", type="BFAR"),
+  data.frame(core=names(core_data[,30]), age = core_data[,29], values = core_data[,30]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="atlantic", type="CMAR"),
+  data.frame(core=names(core_data[,32]), age = core_data[,31], values = core_data[,32]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="atlantic", type="BFAR"),
+  data.frame(core=names(core_data[,34]), age = core_data[,33], values = core_data[,34]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="atlantic", type="CMAR"),
+  data.frame(core=names(core_data[,36]), age = core_data[,35], values = core_data[,36]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="atlantic", type="BFAR"),
+  data.frame(core=names(core_data[,38]), age = core_data[,37], values = core_data[,38]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="atlantic", type="CMAR"),
+  data.frame(core=names(core_data[,40]), age = core_data[,39], values = core_data[,40]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="atlantic", type="CMAR"),
+  data.frame(core=names(core_data[,42]), age = core_data[,41], values = core_data[,42]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="indian", type="CMAR"),
+  data.frame(core=names(core_data[,44]), age = core_data[,43], values = core_data[,44]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="indian", type="CMAR"),
+  data.frame(core=names(core_data[,46]), age = core_data[,45], values = core_data[,46]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="indian", type="CMAR"),
+  data.frame(core=names(core_data[,48]), age = core_data[,47], values = core_data[,48]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="indian", type="NAR"),
+  data.frame(core=names(core_data[,50]), age = core_data[,49], values = core_data[,50]) |> rename(core=1, age=2, values=3) |> drop_na() |> mutate(region="indian", type="NAR")
+) |> mutate(age=age/1000) |> 
+  mutate(site = sub("_.*", "", core))
+
+
+cores |> select(region, site, type) |> distinct() |> kbl() |> kable_styling(bootstrap_options = c("striped", "hover"))
+
+```
+
+
+
+Plot nornalised Z score for palaeoproducticity per core by region with (loose) gam fit:
+
+
+```{r, fig.width=8, fig.height=4}
+
+ggplot() + theme_bw() +
+  geom_line(data=cores, aes(age, values, group=core), color="grey") +
+#  geom_point(data=cores, aes(age, values, group=core), shape=21) +
+  geom_smooth(data=cores, aes(age, values), method="gam") +
+  geom_hline(yintercept=0, lwd=0.2) + ylab("Z-score")
+
+```
+
+Plot palaeoproducticity by region (:
+
+```{r, fig.width=10, fig.height=4}
+
+ggplot() + theme_bw() + facet_wrap(~region, ncol=3) +
+  geom_line(data=cores, aes(age, values, group=core, color=region), show.legend=FALSE) +
+  #geom_point(data=cores, aes(age, values, group=core, fill=region), show.legend=FALSE, shape=21, size=1) +
+  geom_smooth(data=cores, aes(age, values, group=region), method="gam", show.legend=FALSE) +
+  geom_hline(yintercept=0, linewidth=0.2) + ylab("Z-score")
+
+```
+
+Extract median data 
+
+```{r, fig.width=6, fig.height=12}
+
+
+
+core_data_median <- readxl::read_xlsx("/Users/rof011/downloads/41467_2021_27784_MOESM2_ESM.xlsx", sheet="z-scored compilations", col_types="text")
+
+
+
+cores_median <- bind_rows(
+  core_data_median |> select(1:4) |> rename(age=1, values=2, lower=3, upper=4) |> mutate(region="pacific") |> mutate_at(c('age', 'upper', 'lower', 'values'), as.numeric),
+  core_data_median |> select(1,6:8) |> rename(age=1, values=2, lower=3, upper=4) |> mutate(region="atlantic") |> mutate_at(c('age', 'upper', 'lower', 'values'), as.numeric)
+) |>  na.omit() |> 
+  mutate(age=as.numeric(as.character(age))/1000) 
+
+
+```
+
+plot the Atlantic and Pacific with assymatric upper and lower bounds (16th / 84th percentile)
+
+```{r, fig.width=8, fig.height=4}
+
+
+ggplot() + theme_bw() + facet_wrap(~region) +
+  geom_line(data=cores_median, aes(age, values)) +
+  geom_ribbon(data=cores_median, aes(age, values, ymin=lower, ymax=upper), fill="grey", alpha=0.5) +
+  geom_point(data=cores_median, aes(age, values), shape=21) +
+  geom_smooth(data=cores_median, aes(age, values), method="gam", se=FALSE) +
+  geom_hline(yintercept=0) + ylab("Z-score")
+
+
+```
+
+
+
+recalculate median from individual cores:
+
+```{r, fig.width=10, fig.height=4}
+
+
+calculated_mean <- cores |> 
+  filter(region %in% c("atlantic", "pacific")) |> 
+  group_by(age, region) |> 
+  summarise(median=median(values))  
+
+ggplot() + theme_bw() + facet_wrap(~region) +
+  geom_ribbon(data=cores_median, aes(age, values, ymin=lower, ymax=upper), fill="grey", alpha=0.5) +
+  geom_line(data=cores |> filter(region %in% c("atlantic", "pacific")), aes(age, values, color=core)) +
+  geom_line(data=calculated_mean, aes(x=age, y=median, group=region)) +
+  geom_hline(yintercept=0) + ylab("Z-score")
+
+```
+
+`Each individual record was trimmed to 7–3 Ma, so that all records cover the same time` 
+`interval, and subsequently standardized by means of a z-score calculation (subtracting` 
+`the mean value of the record from each data point before dividing by the record’s standard`
+`deviation; Supplementary Material). Z-scored individual records were then compiled for `
+`each ocean basin before all selected records were combined (Supplementary Figs. 1–4). `
+`Thereafter, the z-scored data was grouped into 40 kyr time bins. The chosen time bin falls `
+`close to the median temporal resolution (samples/Ma) of all the records we used (Supplementary Table 1)``
+
+rebin the raw data to 40k intervals
+
+```{r, fig.width=8, fig.height=4}
+
+
+calculated_mean <- cores |> filter(region %in% c("atlantic", "pacific")) |> group_by(age, region) |> summarise(mean=mean(values))  
+
+
+# Define bin edges for 40 ka intervals from 3.00 to the max age in the data
+bin_edges <- seq(3.00, max(cores$age, na.rm = TRUE), by = 0.04)
+
+# Re-bin age, calculate median and 68% percentiles within each region and age bin
+binned_stats <- cores |> 
+ # filter(region %in% c("atlantic", "pacific")) |> 
+  mutate(age_bin = cut(age, breaks = bin_edges, include.lowest = TRUE, labels = bin_edges[-length(bin_edges)])) %>%
+  group_by(region, age_bin) %>%
+  summarize(
+    median_value = median(values, na.rm = TRUE),
+    percentile_16 = quantile(values, 0.16, na.rm = TRUE),
+    percentile_84 = quantile(values, 0.84, na.rm = TRUE),
+    .groups = "drop"  # Avoids unnecessary grouping in the output
+  ) %>%
+  mutate(age_bin = as.numeric(as.character(age_bin)))  # Convert age_bin to numeric
+
+
+ggplot() + theme_bw() + facet_wrap(~region) +
+  geom_ribbon(data=binned_stats, aes(age_bin, ymin=percentile_16, ymax=percentile_84), fill="grey", alpha=0.5) +
+  #geom_point(data=cores_median, aes(age, values), shape=21) +
+  #geom_smooth(data=cores_median, aes(age, values), method="gam", se=FALSE) +
+  #geom_line(data=cores |> filter(region %in% c("atlantic", "pacific")), aes(age, values, color=core)) +
+  geom_line(data=binned_stats, aes(x=age_bin, y=median_value, group=region)) +
+  geom_hline(yintercept=0) + ylab("Z-score")
+
+
+
+```
+
+  
+compare to original datasource:
+
+
+
+
+```{r, fig.width=8, fig.height=4}
+
+
+ggplot() + theme_bw() + facet_wrap(~region) +
+  geom_line(data=cores_median, aes(age, values)) +
+  geom_ribbon(data=cores_median, aes(age, values, ymin=lower, ymax=upper), fill="grey", alpha=0.5) +
+ # geom_point(data=cores_median, aes(age, values), shape=21) +
+  #geom_smooth(data=cores_median, aes(age, values), method="gam", se=FALSE) +
+  geom_hline(yintercept=0) + ylab("Z-score")
+
+
+```
+
+
+subset only cmar
+```{r, fig.width=8, fig.height=4}
+
+
+
+calculated_mean <- cores |> filter(type %in% "cmar") |> group_by(age, region) |> summarise(mean=mean(values))  
+
+
+# Define bin edges for 40 ka intervals from 3.00 to the max age in the data
+bin_edges <- seq(3.00, max(cores$age, na.rm = TRUE), by = 0.04)
+
+# Re-bin age, calculate median and 68% percentiles within each region and age bin
+binned_stats <- cores |> 
+ # filter(region %in% c("atlantic", "pacific")) |> 
+  mutate(age_bin = cut(age, breaks = bin_edges, include.lowest = TRUE, labels = bin_edges[-length(bin_edges)])) %>%
+  group_by(region, age_bin) %>%
+  summarize(
+    median_value = median(values, na.rm = TRUE),
+    percentile_16 = quantile(values, 0.16, na.rm = TRUE),
+    percentile_84 = quantile(values, 0.84, na.rm = TRUE),
+    .groups = "drop"  # Avoids unnecessary grouping in the output
+  ) %>%
+  mutate(age_bin = as.numeric(as.character(age_bin)))  # Convert age_bin to numeric
+
+
+ggplot() + theme_bw() + facet_wrap(~region) +
+  geom_line(data=cores |> filter(type %in% "CMAR"), aes(age, values, core), color="darkgrey", linweidth=0.1) +
+  geom_ribbon(data=binned_stats, aes(age_bin, ymin=percentile_16, ymax=percentile_84), fill="aquamarine", alpha=0.5) +
+  geom_line(data=binned_stats, aes(x=age_bin, y=median_value, group=region)) +
+  geom_hline(yintercept=0) + ylab("Z-score")
+
+
+
+
+```

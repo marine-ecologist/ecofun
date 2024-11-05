@@ -4,37 +4,33 @@
 \alias{inla2}
 \title{Wrapper to simplify INLA models}
 \usage{
-inla2(
-  data,
-  formula,
-  newdat,
-  family = "gaussian",
-  compute_dic = TRUE,
-  compute_waic = TRUE,
-  compute_marginals = TRUE,
-  verbose = TRUE,
-  ...
-)
+inla2(formula, data, newdat, response_log = FALSE, predictor_log = NULL)
 }
 \arguments{
-\item{data}{df for inla model}
+\item{formula}{Specified formula (no random effects yet)}
 
-\item{formula}{specified formula (no ranef yet)}
+\item{data}{Data frame for INLA model}
 
-\item{newdat}{newdata for predictors as list}
+\item{newdat}{New data for predictors as a list}
 
-\item{family}{default gaussian}
+\item{family}{Family distribution for INLA, default is "gaussian"}
 
-\item{compute_dic}{compute dic, logical}
+\item{compute_dic}{Compute DIC, logical}
 
-\item{compute_waic}{compute waic, logical}
+\item{compute_waic}{Compute WAIC, logical}
 
-\item{compute_marginals}{compute waic, logical}
+\item{compute_cpo}{Compute CPO, logical}
 
-\item{verbose}{silence inla}
+\item{compute_marginals}{Compute marginals, logical}
 
-\item{...}{passes functions}
+\item{verbose}{Set INLA output verbosity, logical}
+
+\item{...}{Additional parameters passed to INLA}
 }
 \description{
-Function to wrap inla models iwth predictors
+Function to wrap INLA models with predictors
+}
+\examples{
+# Set seed for reproducibility
+set.seed(123)
 }

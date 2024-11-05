@@ -1,43 +1,29 @@
-#' Wrapper to simplify INLA models
-#'
-#' Function to wrap INLA models with predictors
-#'
-#' @param data Data frame for INLA model
-#' @param formula Specified formula (no random effects yet)
-#' @param newdat New data for predictors as a list
-#' @param family Family distribution for INLA, default is "gaussian"
-#' @param compute_dic Compute DIC, logical
-#' @param compute_waic Compute WAIC, logical
-#' @param compute_cpo Compute CPO, logical
-#' @param compute_marginals Compute marginals, logical
-#' @param verbose Set INLA output verbosity, logical
-#' @param ... Additional parameters passed to INLA
-#' @export
-#' @examples
-#' # Set seed for reproducibility
-#' set.seed(123)
-#
-# # Example usage with cement data
-# data("cement")
-#
-# # Generate a grid of new values for prediction
-# newdat <- generate_repeated_grid(cement, predictors = c("x1", "x2", "x3"), n = 3)
-#
-# # Run the prediction function
-# result <- inla2(
-#   formula = y ~ x1 + x2 + x3,
-#   data = cement,
-#   newdat = newdat
-# )
-#
-# # Display the predictions
-# head(result$inla_predictions)
-#
+---
+title: "Untitled"
+author: "George Roff"
+date: "2024-11-05"
+output: html_document
+---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Predicting with INLA
+
+
+
+```{r, eval=FALSE}
+
+```
+
+
+```{r, message=FALSE, eval=FALSE}
 
 # Generic function to fit an INLA model and make predictions on new data
 inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = NULL) {
-
+  
+  
   # Check if the response is on the log scale and transform it if needed
   response_var <- all.vars(formula)[1]  # Extract the response variable from the formula
   if (response_log) {
@@ -46,7 +32,7 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
   } else {
     newdat[[response_var]] <- NA
   }
-
+  
   # Transform predictors if specified
   if (!is.null(predictor_log)) {
     for (pred in predictor_log) {
@@ -54,15 +40,15 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
       newdat[[pred]] <- log(newdat[[pred]])
     }
   }
-
+  
   # Remove response variable from data and newdat for the effects in the stack
   effects_data <- data[, setdiff(names(data), response_var), drop = FALSE]
   effects_newdat <- newdat[, setdiff(names(newdat), response_var), drop = FALSE]
-
+  
   # Add an intercept column explicitly to both effects data frames
   effects_data$intercept <- 1
   effects_newdat$intercept <- 1
-
+  
   # Create INLA stack for observed data with explicit intercept
   stack_observed <- inla.stack(
     data = list(y = data[[response_var]]),
@@ -70,7 +56,7 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
     effects = list(effects_data),
     tag = "observed"
   )
-
+  
   # Create INLA stack for prediction data with explicit intercept
   stack_prediction <- inla.stack(
     data = list(y = NA),
@@ -78,23 +64,23 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
     effects = list(effects_newdat),
     tag = "prediction"
   )
-
+  
   # Combine the stacks
   stack <- inla.stack(stack_observed, stack_prediction)
-
+  
   # Fit the INLA model using the combined stack
   model <- inla(
     formula = update(formula, . ~ . + intercept - 1),  # Explicit intercept, remove implicit intercept
     data = inla.stack.data(stack),
     control.predictor = list(A = inla.stack.A(stack), compute = TRUE)
   )
-
+  
   # Extract the index of predictions in the stack
   index_pred <- inla.stack.index(stack, "prediction")$data
-
+  
   # Extract predictions for new data
   predictions <- model$summary.linear.predictor[index_pred, c("mean", "sd", "0.025quant", "0.5quant", "0.975quant")]
-
+  
   # If the response is on the log scale, exponentiate the predictions to transform them back
   if (response_log) {
     predictions <- predictions %>%
@@ -106,12 +92,116 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
         `0.975quant` = exp(`0.975quant`)
       )
   }
-
+  
   # Combine predictions with newdat
   predicted_newdat <- cbind(newdat, predictions) |>
     dplyr::select(-y) |>  # Remove the response variable if it was added as NA
     rename(lower = '0.025quant', median = '0.5quant', upper = '0.975quant')
-
+  
   # Return the model and predictions as a list
   return(list(inla_model = model, inla_predictions = predicted_newdat))
 }
+
+```
+
+
+Example use:
+
+
+```{r}
+
+# Example usage with cement data
+data("cement")
+
+# Generate a grid of new values for prediction
+newdat <- generate_repeated_grid(cement, predictors = c("x1", "x2", "x3"), n = 3)
+
+# Run the prediction function
+result <- inla2(
+  formula = y ~ x1 + x2 + x3,
+  data = cement,
+  newdat = newdat
+)
+
+# Display the predictions
+head(result$inla_predictions)
+
+
+```
+
+
+
+### Conditional Sampling and Combining Posterior Samples with Data
+
+Extract posterior samples from an INLA model with the original data to analyze and visualize the posterior distributions across samples.
+
+Example model:
+
+```{r, message=FALSE}
+
+library(INLA)
+library(tidyverse)
+
+# Simulate some example data
+set.seed(123)
+n <- 100
+x <- rnorm(n, mean = 5, sd = 2)
+y <- 3 + 1.5 * x + rnorm(n, mean = 0, sd = 1)  # Linear relationship with noise
+data <- data.frame(x = x, y = y)
+
+# Fit a simple linear regression model with INLA
+formula <- y ~ x
+model <- inla(formula, data = data, control.predictor = list(compute = TRUE), control.compute=list(config = TRUE))
+
+```
+
+posterior samples are extracted via `inla.posterior.sample(nsamples, model)`
+
+For each posterior sample:
+
+1.  Extract the latent values (such as fitted values or random effects) from the sample.
+
+2.  Combine these latent values with the original data for easy comparison.
+
+3.  Add a sample number to keep track of each posterior sample.
+
+4.  Combine all samples into a single data frame for further analysis.
+
+```{r}
+
+# Number of posterior samples
+nsamples <- 1000
+
+# Generate posterior samples
+posterior_samples <- inla.posterior.sample(nsamples, model)
+
+# Initialize a list to store data frames for each sample
+sampled_data_list <- vector("list", nsamples)
+
+# Loop through each posterior sample and combine with data
+for (i in 1:nsamples) {
+  # Extract the latent values for this sample
+    latent_values <- posterior_samples[[i]]$latent[1:nrow(data)]
+  
+  # Combine the latent values with the original data
+  sample_data <- cbind(data, latent_values)
+  
+  # Add a new column to indicate the sample number
+  sample_data$sample <- i
+  
+  # Store this sample's data in the list
+  sampled_data_list[[i]] <- sample_data
+}
+
+# Combine all samples into a single data frame
+combined_samples <- do.call(rbind, sampled_data_list)
+
+# Display the structure of the combined data
+str(combined_samples)
+
+head(combined_samples)
+
+```
+
+
+
