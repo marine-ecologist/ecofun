@@ -34,12 +34,26 @@
 # head(result$inla_predictions)
 #
 
-
 # Generic function to fit an INLA model and make predictions on new data
-inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = NULL) {
+inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = NULL, seed = NULL) {
 
-  # Check if the response is on the log scale and transform it if needed
-  response_var <- all.vars(formula)[1]  # Extract the response variable from the formula
+  # Set the seed for reproducibility, if provided
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+
+  # Parse the formula to detect log() transformations
+  terms_info <- terms(formula)
+  response_var <- all.vars(formula)[1]
+  response_log <- grepl("log\\(", deparse(terms_info[[2]]))  # Check if log() is used on the response
+
+  # Identify log-transformed predictors
+  predictor_log <- sapply(attr(terms_info, "variables")[-1], function(term) {
+    deparse(term) %in% grep("log\\(", deparse(term), value = TRUE)
+  })
+  predictor_log <- names(predictor_log)[predictor_log]  # Get only the predictors with log()
+
+  # Transform response variable if it's on the log scale
   if (response_log) {
     data[[response_var]] <- log(data[[response_var]])
     newdat[[response_var]] <- NA  # Set response in newdat to NA
@@ -47,12 +61,10 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
     newdat[[response_var]] <- NA
   }
 
-  # Transform predictors if specified
-  if (!is.null(predictor_log)) {
-    for (pred in predictor_log) {
-      data[[pred]] <- log(data[[pred]])
-      newdat[[pred]] <- log(newdat[[pred]])
-    }
+  # Transform log-transformed predictors in both data and newdat
+  for (pred in predictor_log) {
+    data[[pred]] <- log(data[[pred]])
+    newdat[[pred]] <- log(newdat[[pred]])
   }
 
   # Remove response variable from data and newdat for the effects in the stack
