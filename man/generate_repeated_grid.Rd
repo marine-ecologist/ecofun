@@ -4,7 +4,7 @@
 \alias{generate_repeated_grid}
 \title{Wrapper to simplify INLA models}
 \usage{
-generate_repeated_grid(data, predictors, n)
+generate_repeated_grid(data, predictors, n = 1)
 }
 \arguments{
 \item{data}{Data frame for INLA model}

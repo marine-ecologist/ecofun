@@ -4,7 +4,18 @@
 \alias{inla2}
 \title{Wrapper to simplify INLA models}
 \usage{
-inla2(formula, data, newdat, response_log = FALSE, predictor_log = NULL)
+inla2(
+  formula,
+  data,
+  newdat,
+  response_log = FALSE,
+  seed = NULL,
+  family = "gaussian",
+  compute_dic = FALSE,
+  compute_waic = FALSE,
+  compute_cpo = FALSE,
+  compute_marginals = FALSE
+)
 }
 \arguments{
 \item{formula}{Specified formula (no random effects yet)}
@@ -22,8 +33,6 @@ inla2(formula, data, newdat, response_log = FALSE, predictor_log = NULL)
 \item{compute_cpo}{Compute CPO, logical}
 
 \item{compute_marginals}{Compute marginals, logical}
-
-\item{verbose}{Set INLA output verbosity, logical}
 
 \item{...}{Additional parameters passed to INLA}
 }
