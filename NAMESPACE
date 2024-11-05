@@ -2,7 +2,8 @@
 
 export(generate_repeated_grid)
 export(inla2)
-export(predict)
 importFrom(INLA,inla.stack.index)
+importFrom(stats,sd)
+importFrom(stats,terms)
 importFrom(tictoc,tic)
 importFrom(tictoc,toc)

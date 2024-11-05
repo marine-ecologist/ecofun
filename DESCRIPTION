@@ -1,6 +1,6 @@
 Package: ecofun
 Title: A Collection Of Useful Functions For Ecological Analysis
-Version: 0.0.0.9004
+Version: 0.0.0.9005
 Authors@R: 
     person("George", "Roff", , "george.roff@csiro.au", role = c("aut", "cre"),
            comment = c(ORCID = "YOUR-ORCID-ID"))
@@ -11,4 +11,5 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Imports: 
     INLA,
+    stats,
     tictoc
