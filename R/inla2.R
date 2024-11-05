@@ -64,7 +64,7 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
   effects_newdat$intercept <- 1
 
   # Create INLA stack for observed data with explicit intercept
-  stack_observed <- inla.stack(
+  stack_observed <- INLA::inla.stack(
     data = list(y = data[[response_var]]),
     A = list(1),
     effects = list(effects_data),
@@ -72,7 +72,7 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
   )
 
   # Create INLA stack for prediction data with explicit intercept
-  stack_prediction <- inla.stack(
+  stack_prediction <- INLA::inla.stack(
     data = list(y = NA),
     A = list(1),
     effects = list(effects_newdat),
@@ -80,17 +80,17 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
   )
 
   # Combine the stacks
-  stack <- inla.stack(stack_observed, stack_prediction)
+  stack <- INLA::inla.stack(stack_observed, stack_prediction)
 
   # Fit the INLA model using the combined stack
-  model <- inla(
-    formula = update(formula, . ~ . + intercept - 1),  # Explicit intercept, remove implicit intercept
-    data = inla.stack.data(stack),
-    control.predictor = list(A = inla.stack.A(stack), compute = TRUE)
+  model <- INLA::inla(
+    formula = stats::update(formula, . ~ . + intercept - 1),  # Explicit intercept, remove implicit intercept
+    data = INLA::inla.stack.data(stack),
+    control.predictor = list(A = INLA::inla.stack.A(stack), compute = TRUE)
   )
 
   # Extract the index of predictions in the stack
-  index_pred <- inla.stack.index(stack, "prediction")$data
+  index_pred <- INLA::inla.stack.index(stack, "prediction")$data
 
   # Extract predictions for new data
   predictions <- model$summary.linear.predictor[index_pred, c("mean", "sd", "0.025quant", "0.5quant", "0.975quant")]
@@ -108,9 +108,11 @@ inla2 <- function(formula, data, newdat, response_log = FALSE, predictor_log = N
   }
 
   # Combine predictions with newdat
-  predicted_newdat <- cbind(newdat, predictions) |>
-    dplyr::select(-y) |>  # Remove the response variable if it was added as NA
-    rename(lower = '0.025quant', median = '0.5quant', upper = '0.975quant')
+  predicted_newdat <- dplyr::select(
+    cbind(newdat, predictions),
+    -y
+  ) %>%
+    dplyr::rename(lower = `0.025quant`, median = `0.5quant`, upper = `0.975quant`)
 
   # Return the model and predictions as a list
   return(list(inla_model = model, inla_predictions = predicted_newdat))
